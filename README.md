@@ -1,5 +1,7 @@
 # Dot Product Benchmark
 
+Do one thing, do it well. Performance comparison for a one-threaded non-parallel dot product of vectors and matrices in Rust.
+
 ### Libraries
 - `native`
 - [`rblas`](https://mikkyang.github.io/rust-blas/doc/rblas/index.html)
