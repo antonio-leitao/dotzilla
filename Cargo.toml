@@ -11,6 +11,13 @@ blas-src = { version = "0.8", features = ["openblas"] }
 rand = "0.8.5"
 rblas = "0.0.13"
 ndarray-rand = "0.14"
-faer = "0.16.0"
 anyhow = "1.0.75"
 human-repr = "1.1.0"
+ndarray-linalg = "0.16.0"
+
+[dev-dependencies]
+criterion = "0.5.1"
+
+[[bench]]
+name = "dot_benchmark"
+harness = false

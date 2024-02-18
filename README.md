@@ -6,21 +6,36 @@ Do one thing, do it well. Performance comparison for a one-threaded non-parallel
 - `native`
 - [`rblas`](https://mikkyang.github.io/rust-blas/doc/rblas/index.html)
 - [`ndarray`](https://docs.rs/ndarray/latest/ndarray/)
-- [`faer`](https://github.com/sarah-ek/faer-rs/tree/main)
 
 All benchmarks where run on an `16Gb` M1 Pro Macbook using `openblas` with no parallelisation.
 
-### Level 1: vector-vector
+### Dot Product
 Time it takes to do 1,000,000 (Million) vector multiplications of increasing size `n`
 ```text
-    n     native      rblas    ndarray       faer
-    8    178.3ms     23.6ms    176.5ms      2.61s
-   16    284.7ms     24.5ms    210.1ms      3.58s
-   32      534ms     27.2ms    134.3ms      5.46s
-   64      1.02s     33.3ms    139.3ms      9.15s
-  128      2.02s     42.8ms    148.1ms     17.58s
-  256      3.95s     64.8ms    171.5ms     31.86s
-  512      7.91s    103.4ms      209ms     1:01.5
- 1024     15.54s    180.6ms    287.3ms     1:59.8
- 2048     31.48s    339.7ms    449.6ms     3:57.7
+DOT PRODUCTS:
+    n     native      rblas    ndarray
+    8    176.9ms     23.9ms    178.7ms
+   16      294ms     24.9ms    213.8ms
+   32    625.7ms     27.4ms    136.4ms
+   64      1.05s     32.3ms    141.7ms
+  128      2.02s     42.5ms      151ms
+  256      4.01s     62.7ms    171.1ms
+  512      7.92s      103ms      211ms
+ 1024     15.72s    184.5ms    291.6ms
+ 2048     31.33s    344.5ms    455.9ms
+```
+
+### Euclidean Distance
+```text
+EUCLIDEAN DISTANCE:
+    n     native      rblas    ndarray
+    8    217.9ms     49.6ms      2.44s
+   16    382.5ms     53.3ms       2.8s
+   32    709.4ms     65.5ms      3.45s
+   64      1.36s     87.4ms      4.74s
+  128      2.66s    129.6ms      7.25s
+  256      5.35s    220.5ms     12.32s
+  512     10.36s    402.9ms     22.49s
+ 1024     20.63s    797.2ms     42.72s
+ 2048     41.19s       1.6s     1:25.4
 ```
