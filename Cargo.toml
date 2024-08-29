@@ -1,23 +1,14 @@
 [package]
-name = "dot_benchmark"
+name = "dotzilla"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-ndarray = { version = "0.15.6", features = ["blas"] }
-blas-src = { version = "0.8", features = ["openblas"] }
-rand = "0.8.5"
-rblas = "0.0.13"
-ndarray-rand = "0.14"
-anyhow = "1.0.75"
-human-repr = "1.1.0"
-ndarray-linalg = "0.16.0"
 
 [dev-dependencies]
 criterion = "0.5.1"
 
 [[bench]]
-name = "dot_benchmark"
+name = "benchmark"
 harness = false
