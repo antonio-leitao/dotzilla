@@ -5,6 +5,8 @@ version = "0.1.0"
 description = "Native Rust implementation of efficient basic linear algebra routines"
 repository = "https://github.com/antonio-leitao/dotzilla"
 edition = "2021"
+license = "Apache-2.0"
+license-file = "LICENSE"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
