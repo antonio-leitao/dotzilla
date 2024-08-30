@@ -1,7 +1,7 @@
 [package]
 name = "dotzilla"
 authors = ["António Leitão"]
-version = "0.1.0"
+version = "0.1.1"
 description = "Native Rust implementation of efficient basic linear algebra routines"
 repository = "https://github.com/antonio-leitao/dotzilla"
 edition = "2021"
