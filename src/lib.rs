@@ -1,47 +1,53 @@
-pub mod dot_avx;
-pub mod dot_neon;
-pub mod dot_sse;
-pub mod dot_std;
+// src/lib.rs
+//! High-performance dot_product with automatic SIMD dispatch
 
-#[cfg(all(target_feature = "avx", target_feature = "fma"))]
-use dot_avx::*;
+pub mod dotf32;
+pub mod dotf64;
 
-#[cfg(target_feature = "neon")]
-use dot_neon::*;
+/// Trait providing dot product implementation for floating-point slices
+pub trait DotProduct {
+    /// Result type matching the input precision
+    type Output;
 
-#[cfg(target_feature = "sse")]
-use dot_sse::*;
-
-// Fallback implementation: if none of the above features are enabled, use the standard implementation
-#[cfg(not(any(
-    all(target_feature = "avx", target_feature = "fma"),
-    target_feature = "neon",
-    target_feature = "sse",
-)))]
-use dot_std::*;
-
-pub fn dot(a: &[f32], b: &[f32]) -> f32 {
-    return unsafe { inner_product(a, b) };
+    /// Compute the dot product of two vectors
+    ///
+    /// # Panics
+    /// Panics if vectors have different lengths
+    fn dot_product(&self, other: &Self) -> Self::Output;
 }
 
-pub fn l2sq(a: &[f32], b: &[f32]) -> f32 {
-    return unsafe { euclidean(a, b) };
+impl DotProduct for [f32] {
+    type Output = f32;
+
+    #[inline]
+    fn dot_product(&self, other: &Self) -> Self::Output {
+        dotf32::dot_product(self, other)
+    }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+impl DotProduct for [f64] {
+    type Output = f64;
 
-    #[test]
-    fn test_inner_product() {
-        let a = vec![1.0f32; 1024];
-        let b = vec![2.0f32; 1024];
-        assert_eq!(dot(&a, &b), dot_std::inner_product(&a, &b));
+    #[inline]
+    fn dot_product(&self, other: &Self) -> Self::Output {
+        dotf64::dot_product(self, other)
     }
-    #[test]
-    fn test_euclidean() {
-        let a = vec![1.0f32; 1024];
-        let b = vec![2.0f32; 1024];
-        assert_eq!(l2sq(&a, &b), dot_std::euclidean(&a, &b));
-    }
+}
+
+/// Top-level dot product function for ergonomic usage
+///
+/// # Examples
+/// ```
+/// use dotzilla::dot_product;
+///
+/// let a = vec![1.0f32, 2.0, 3.0];
+/// let b = vec![4.0f32, 5.0, 6.0];
+/// assert_eq!(dot_product(&a, &b), 32.0);
+/// ```
+#[inline]
+pub fn dot_product<T>(a: &[T], b: &[T]) -> <[T] as DotProduct>::Output
+where
+    [T]: DotProduct,
+{
+    a.dot_product(b)
 }

@@ -14,25 +14,16 @@ Or add the following line to your Cargo.toml:
 
 ```toml
 [dependencies]
-dotzilla = "0.1.0"
+dotzilla = "0.2.0"
 ```
 
 ### Usage
 
 ```Rust
-use dotzilla::{dot, l2sq};
+/// Example
+use dotzilla::dot_product;
 
-fn main() {
-    // Example data
-    let a = vec![1.0f32; 1024];
-    let b = vec![2.0f32; 1024];
-    let inner_produce = dot(&a, &b);
-    let euclidean_distance_squared = l2sq(&a, &b);
-}
+let a = vec![1.0f32, 2.0, 3.0];
+let b = vec![4.0f32, 5.0, 6.0];
+assert_eq!(dot_product(&a, &b), 32.0);
 ```
-
-### Roadmap:
-- [x] `dot` inner product implementation for `&[f32]`.
-- [x] `l2sq` square euclidean distance for `&[f32]` 
-- [ ] `dot_f64` inner product implementation for`&[f64]`.
-- [ ] `l2sq_f64` square euclidean distance for `&[f64]` 
