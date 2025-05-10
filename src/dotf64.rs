@@ -30,7 +30,6 @@ pub fn dot_product(a: &[f64], b: &[f64]) -> f64 {
     dot_product_scalar(a, b)
 }
 
-// AVX2+FMA implementation (x86/x86_64)
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[target_feature(enable = "avx2,fma")]
 unsafe fn dot_product_avx2_fma(a: &[f64], b: &[f64]) -> f64 {
@@ -39,40 +38,77 @@ unsafe fn dot_product_avx2_fma(a: &[f64], b: &[f64]) -> f64 {
     let mut accum1 = _mm256_setzero_pd();
     let mut accum2 = _mm256_setzero_pd();
     let mut accum3 = _mm256_setzero_pd();
+    let mut accum4 = _mm256_setzero_pd();
+    let mut accum5 = _mm256_setzero_pd();
+    let mut accum6 = _mm256_setzero_pd();
+    let mut accum7 = _mm256_setzero_pd();
 
+    let a_ptr = a.as_ptr();
+    let b_ptr = b.as_ptr();
     let mut i = 0;
-    while i + 32 <= len {
-        let a_ptr = a.as_ptr().add(i);
-        let b_ptr = b.as_ptr().add(i);
 
-        // Process 32 elements per iteration (4 vectors × 8 elements)
-        let a0 = _mm256_loadu_pd(a_ptr);
-        let b0 = _mm256_loadu_pd(b_ptr);
+    // Process 32 elements per iteration (8 vectors × 4 elements)
+    let chunk_size = 32;
+    let iterations = len / chunk_size;
+    let remainder_start = iterations * chunk_size;
+
+    for _ in 0..iterations {
+        let offset = i;
+
+        // Load 8 vectors from a and b
+        let a0 = _mm256_loadu_pd(a_ptr.add(offset));
+        let b0 = _mm256_loadu_pd(b_ptr.add(offset));
         accum0 = _mm256_fmadd_pd(a0, b0, accum0);
 
-        let a1 = _mm256_loadu_pd(a_ptr.add(4));
-        let b1 = _mm256_loadu_pd(b_ptr.add(4));
+        let a1 = _mm256_loadu_pd(a_ptr.add(offset + 4));
+        let b1 = _mm256_loadu_pd(b_ptr.add(offset + 4));
         accum1 = _mm256_fmadd_pd(a1, b1, accum1);
 
-        let a2 = _mm256_loadu_pd(a_ptr.add(8));
-        let b2 = _mm256_loadu_pd(b_ptr.add(8));
+        let a2 = _mm256_loadu_pd(a_ptr.add(offset + 8));
+        let b2 = _mm256_loadu_pd(b_ptr.add(offset + 8));
         accum2 = _mm256_fmadd_pd(a2, b2, accum2);
 
-        let a3 = _mm256_loadu_pd(a_ptr.add(12));
-        let b3 = _mm256_loadu_pd(b_ptr.add(12));
+        let a3 = _mm256_loadu_pd(a_ptr.add(offset + 12));
+        let b3 = _mm256_loadu_pd(b_ptr.add(offset + 12));
         accum3 = _mm256_fmadd_pd(a3, b3, accum3);
 
-        i += 16;
+        let a4 = _mm256_loadu_pd(a_ptr.add(offset + 16));
+        let b4 = _mm256_loadu_pd(b_ptr.add(offset + 16));
+        accum4 = _mm256_fmadd_pd(a4, b4, accum4);
+
+        let a5 = _mm256_loadu_pd(a_ptr.add(offset + 20));
+        let b5 = _mm256_loadu_pd(b_ptr.add(offset + 20));
+        accum5 = _mm256_fmadd_pd(a5, b5, accum5);
+
+        let a6 = _mm256_loadu_pd(a_ptr.add(offset + 24));
+        let b6 = _mm256_loadu_pd(b_ptr.add(offset + 24));
+        accum6 = _mm256_fmadd_pd(a6, b6, accum6);
+
+        let a7 = _mm256_loadu_pd(a_ptr.add(offset + 28));
+        let b7 = _mm256_loadu_pd(b_ptr.add(offset + 28));
+        accum7 = _mm256_fmadd_pd(a7, b7, accum7);
+
+        i += chunk_size;
     }
 
-    // Horizontal sum of accumulators
-    let sum = hsum_avx(accum0) + hsum_avx(accum1) + hsum_avx(accum2) + hsum_avx(accum3);
+    // Combine accumulators
+    accum0 = _mm256_add_pd(accum0, accum1);
+    accum2 = _mm256_add_pd(accum2, accum3);
+    accum4 = _mm256_add_pd(accum4, accum5);
+    accum6 = _mm256_add_pd(accum6, accum7);
 
-    // Process remaining elements with scalar
-    sum + dot_product_scalar(&a[i..], &b[i..])
+    accum0 = _mm256_add_pd(accum0, accum2);
+    accum4 = _mm256_add_pd(accum4, accum6);
+
+    let total = _mm256_add_pd(accum0, accum4);
+
+    // Horizontal sum
+    let sum = hsum_avx(total);
+
+    // Process remaining elements with optimized scalar
+    sum + dot_product_scalar(&a[remainder_start..], &b[remainder_start..])
 }
 
-// NEON implementation (aarch64)
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
 unsafe fn dot_product_neon(a: &[f64], b: &[f64]) -> f64 {
@@ -81,63 +117,105 @@ unsafe fn dot_product_neon(a: &[f64], b: &[f64]) -> f64 {
     let mut accum1 = vdupq_n_f64(0.0);
     let mut accum2 = vdupq_n_f64(0.0);
     let mut accum3 = vdupq_n_f64(0.0);
+    let mut accum4 = vdupq_n_f64(0.0);
+    let mut accum5 = vdupq_n_f64(0.0);
+    let mut accum6 = vdupq_n_f64(0.0);
+    let mut accum7 = vdupq_n_f64(0.0);
 
+    let a_ptr = a.as_ptr();
+    let b_ptr = b.as_ptr();
     let mut i = 0;
-    while i + 16 <= len {
-        let a_ptr = a.as_ptr().add(i);
-        let b_ptr = b.as_ptr().add(i);
 
-        // Process 16 elements per iteration (4 vectors × 4 elements)
-        let a0 = vld1q_f64(a_ptr);
-        let b0 = vld1q_f64(b_ptr);
+    // Process 16 elements per iteration (8 vectors × 2 elements)
+    let chunk_size = 16;
+    let iterations = len / chunk_size;
+    let remainder_start = iterations * chunk_size;
+
+    for _ in 0..iterations {
+        let offset = i;
+
+        let a0 = vld1q_f64(a_ptr.add(offset));
+        let b0 = vld1q_f64(b_ptr.add(offset));
         accum0 = vfmaq_f64(accum0, a0, b0);
 
-        let a1 = vld1q_f64(a_ptr.add(2));
-        let b1 = vld1q_f64(b_ptr.add(2));
+        let a1 = vld1q_f64(a_ptr.add(offset + 2));
+        let b1 = vld1q_f64(b_ptr.add(offset + 2));
         accum1 = vfmaq_f64(accum1, a1, b1);
 
-        let a2 = vld1q_f64(a_ptr.add(4));
-        let b2 = vld1q_f64(b_ptr.add(4));
+        let a2 = vld1q_f64(a_ptr.add(offset + 4));
+        let b2 = vld1q_f64(b_ptr.add(offset + 4));
         accum2 = vfmaq_f64(accum2, a2, b2);
 
-        let a3 = vld1q_f64(a_ptr.add(6));
-        let b3 = vld1q_f64(b_ptr.add(6));
+        let a3 = vld1q_f64(a_ptr.add(offset + 6));
+        let b3 = vld1q_f64(b_ptr.add(offset + 6));
         accum3 = vfmaq_f64(accum3, a3, b3);
 
-        i += 8;
+        let a4 = vld1q_f64(a_ptr.add(offset + 8));
+        let b4 = vld1q_f64(b_ptr.add(offset + 8));
+        accum4 = vfmaq_f64(accum4, a4, b4);
+
+        let a5 = vld1q_f64(a_ptr.add(offset + 10));
+        let b5 = vld1q_f64(b_ptr.add(offset + 10));
+        accum5 = vfmaq_f64(accum5, a5, b5);
+
+        let a6 = vld1q_f64(a_ptr.add(offset + 12));
+        let b6 = vld1q_f64(b_ptr.add(offset + 12));
+        accum6 = vfmaq_f64(accum6, a6, b6);
+
+        let a7 = vld1q_f64(a_ptr.add(offset + 14));
+        let b7 = vld1q_f64(b_ptr.add(offset + 14));
+        accum7 = vfmaq_f64(accum7, a7, b7);
+
+        i += chunk_size;
     }
 
     // Combine accumulators
-    let sum = hsum_neon(accum0) + hsum_neon(accum1) + hsum_neon(accum2) + hsum_neon(accum3);
-    sum + dot_product_scalar(&a[i..], &b[i..])
+    accum0 = vaddq_f64(accum0, accum1);
+    accum2 = vaddq_f64(accum2, accum3);
+    accum4 = vaddq_f64(accum4, accum5);
+    accum6 = vaddq_f64(accum6, accum7);
+
+    accum0 = vaddq_f64(accum0, accum2);
+    accum4 = vaddq_f64(accum4, accum6);
+
+    let total = vaddq_f64(accum0, accum4);
+
+    // Horizontal sum
+    let sum = hsum_neon(total);
+
+    // Process remaining elements
+    sum + dot_product_scalar(&a[remainder_start..], &b[remainder_start..])
 }
 
 /// Optimized scalar fallback with manual unrolling
 #[inline(always)]
 fn dot_product_scalar(a: &[f64], b: &[f64]) -> f64 {
-    let mut a_chunks = a.chunks_exact(8);
-    let mut b_chunks = b.chunks_exact(8);
-    let mut sum = 0.0;
+    let mut sum0 = 0.0;
+    let mut sum1 = 0.0;
+    let mut sum2 = 0.0;
+    let mut sum3 = 0.0;
 
-    // Process chunks
-    for (a_chunk, b_chunk) in a_chunks.by_ref().zip(b_chunks.by_ref()) {
-        sum += a_chunk[0] * b_chunk[0]
-            + a_chunk[1] * b_chunk[1]
-            + a_chunk[2] * b_chunk[2]
-            + a_chunk[3] * b_chunk[3]
-            + a_chunk[4] * b_chunk[4]
-            + a_chunk[5] * b_chunk[5]
-            + a_chunk[6] * b_chunk[6]
-            + a_chunk[7] * b_chunk[7];
+    let mut i = 0;
+    let len = a.len();
+    let upper = len - (len % 4);
+
+    while i < upper {
+        sum0 += a[i] * b[i];
+        sum1 += a[i + 1] * b[i + 1];
+        sum2 += a[i + 2] * b[i + 2];
+        sum3 += a[i + 3] * b[i + 3];
+        i += 4;
     }
 
-    // Process remainders
-    let a_rem = a_chunks.remainder();
-    let b_rem = b_chunks.remainder();
-    sum + a_rem
-        .iter()
-        .zip(b_rem)
-        .fold(0.0, |acc, (&a, &b)| acc + a * b)
+    let mut total = sum0 + sum1 + sum2 + sum3;
+
+    // Process remaining elements
+    while i < len {
+        total += a[i] * b[i];
+        i += 1;
+    }
+
+    total
 }
 
 // Horizontal sum utilities

@@ -1,27 +1,35 @@
-use criterion::{criterion_group, criterion_main, Criterion};
-use dotzilla::{dot, l2sq};
+// benches/benchmark.rs
+use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use dotzilla::dot_product;
+use dotzilla::quantized::{quantize_normalized, quantized_dot_product};
 
-fn benchmark_inner_product(c: &mut Criterion) {
-    // Example data
-    let a = vec![1.0f32; 1024];
-    let b = vec![2.0f32; 1024];
+// Update benchmark file to include f32 tests
+fn bench_dot_product(c: &mut Criterion) {
+    let len = 1024 * 1024;
 
-    c.bench_function("inner_product", |bencher| bencher.iter(|| dot(&a, &b)));
-    c.bench_function("baseline_inner_product", |bencher| {
-        bencher.iter(|| dotzilla::dot_std::inner_product(&a, &b))
+    // f64 benchmark
+    let a_f64: Vec<f64> = (0..len).map(|x| x as f64).collect();
+    let b_f64: Vec<f64> = (0..len).map(|x| (x as f64).sin()).collect();
+
+    // f32 benchmark
+    let a_f32: Vec<f32> = (0..len).map(|x| x as f32).collect();
+    let b_f32: Vec<f32> = (0..len).map(|x| (x as f32).sin()).collect();
+
+    // Quantized
+    let a_q = quantize_normalized(&a_f32);
+    let b_q = quantize_normalized(&b_f32);
+    c.bench_function("dot_product_f64", |bench| {
+        bench.iter(|| dot_product(black_box(&a_f64), black_box(&b_f64)))
+    });
+
+    c.bench_function("dot_product_f32", |bench| {
+        bench.iter(|| dot_product(black_box(&a_f32), black_box(&b_f32)))
+    });
+
+    c.bench_function("dot_product_quantized", |bench| {
+        bench.iter(|| quantized_dot_product(black_box(&a_q), black_box(&b_q)))
     });
 }
 
-fn benchmark_euclidean(c: &mut Criterion) {
-    // Example data
-    let a = vec![1.0f32; 1024];
-    let b = vec![2.0f32; 1024];
-
-    c.bench_function("euclidean", |bencher| bencher.iter(|| l2sq(&a, &b)));
-    c.bench_function("baseline_euclidean", |bencher| {
-        bencher.iter(|| dotzilla::dot_std::euclidean(&a, &b))
-    });
-}
-
-criterion_group!(benches, benchmark_inner_product, benchmark_euclidean,);
+criterion_group!(benches, bench_dot_product);
 criterion_main!(benches);

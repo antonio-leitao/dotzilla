@@ -3,6 +3,7 @@
 
 pub mod dotf32;
 pub mod dotf64;
+pub mod quantized;
 
 /// Trait providing dot product implementation for floating-point slices
 pub trait DotProduct {
